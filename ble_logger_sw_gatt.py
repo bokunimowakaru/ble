@@ -116,6 +116,12 @@ def udp_sender_sensor(sensors):
     if d1 is not None:
         udp_sender( 'illum_' + udp_suffix + ',' + str(d1) )
         return
+    if len(sensors.get('Button')) >= 4:
+        udp_sender( 'btn_s_' + udp_suffix + ',' + sensors['Button'][3]\
+                                         + ', ' + sensors['Button'][2]\
+                                         + ', ' + sensors['Button'][1]\
+                                         + ', ' + sensors['Button'][0])
+        return
 
 def save(filename, data):
     try:
@@ -336,7 +342,7 @@ while True:
                     body_dict['d2'] = sensors.get('Proximity')
                 body_dict['d3'] = sensors.get('Pressure')
                 body_dict['d4'] = sensors.get('Illuminance')
-                if sensors.get('Button') is not None:
+                if len(sensors.get('Button')) >= 4:
                     for i in range(4):
                         if body_dict['d' + str(i+1)] is None:
                             body_dict['d' + str(i+1)] = sensors['Button'][3-i]

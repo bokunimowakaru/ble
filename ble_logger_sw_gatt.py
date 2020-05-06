@@ -4,6 +4,8 @@
 ################################################################################
 # BLE Logger SW GATT
 #
+# git clone https://github.com/bokunimowakaru/ble.git
+#
 #                                          Copyright (c) 2019-2020 Wataru KUNINO
 ################################################################################
 
@@ -30,20 +32,21 @@ udp_sendto = '255.255.255.255'      # UDP送信宛先
 udp_port   = 1024                   # UDP送信先ポート番号
 udp_suffix = '4'                    # UDP送信デバイス名に付与する番号
 udp_interval = 30                   # UDP/GATT送信間隔
+target_rssi = -60                   # 接続対象デバイスの最低受信強度
 
 # ここに接続するデバイス名とサービスUUIDを入力 ## Nordicは動作未確認
 target_devices = [  'cq_ex21_ble_led',\
                     'cq_ex22_ble_sw',\
                     'Nordic_Blinky',\
-                    'RBLE-DEV']
+                    'RBLE-DEV',\
+                    'AB Shutter3       ']
 target_services = [ '00001523-1212-efde-1523-785feabcd123',\
                     '00001523-1212-efde-1523-785feabcd123',\
                     '00001523-1212-efde-1523-785feabcd123',\
-                    '58831926-5f05-4267-ab01-b4968e8efce0']
-notify_cnf_hnd = [0x000e, 0x000e, 0x000e, 0x0013]
-notify_val_hnd = [0x000d, 0x000d, 0x000d, 0x0012]
-
-notify_services = [ '00002902-0000-1000-8000-00805f9b34fb']
+                    '58831926-5f05-4267-ab01-b4968e8efce0',\
+                    '00001812-0000-1000-8000-00805f9b34fb']
+notify_cnf_hnd = [0x000e, 0x000e, 0x000e, 0x0013, 0x0014]
+notify_val_hnd = [0x000d, 0x000d, 0x000d, 0x0012, 0x0013]
 
 from bluepy import btle
 from bluepy.btle import Peripheral, DefaultDelegate
@@ -59,9 +62,6 @@ import socket
 
 url_s = 'https://ambidata.io/api/v2/channels/'+ambient_chid+'/data' # アクセス先
 head_dict = {'Content-Type':'application/json'} # ヘッダを変数head_dictへ
-body_dict = {'writeKey':ambient_wkey, \
-            'd1':0, 'd2':0, 'd3':0, 'd4':0, 'd5':0, 'd6':0, 'd7':0, 'd8':0}
-
 
 class MyDelegate(DefaultDelegate):
 
@@ -87,7 +87,7 @@ def udp_sender(udp):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # ソケットを作成
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST,1)
     except Exception as e:                                  # 例外処理発生時
-        print(e)                                            # エラー内容を表示
+        print('ERROR:',e)                                            # エラー内容を表示
         exit()                                              # プログラムの終了
     if sock:                                                # 作成に成功したとき
         udp = udp.strip('\r\n')                             # 改行を削除してudpへ
@@ -121,7 +121,7 @@ def save(filename, data):
     try:
         fp = open(filename, mode='a')                   # 書込用ファイルを開く
     except Exception as e:                              # 例外処理発生時
-        print(e)                                        # エラー内容を表示
+        print('ERROR:',e)                                        # エラー内容を表示
     fp.write(data + '\n')                               # dataをファイルへ
     fp.close()                                          # ファイルを閉じる
     chown(filename, username, username)                 # 所有者をpiユーザへ
@@ -163,13 +163,13 @@ def parser(dev):
     sensors['index'] = None
     sensors['vals'] = None
     for (adtype, desc, value) in dev.getScanData():
-        print("  %3d %s = %s" % (adtype, desc, value))  # ad_t=[{8:'Short Local Name'},{9:'Complete Local Name'}]
+        print("  %3d %s = %s (%d)" % (adtype, desc, value, len(value)))  # ad_t=[{8:'Short Local Name'},{9:'Complete Local Name'}]
 
         # GATT サービス
-        if adtype == 7 and value in target_services:
+        if (adtype == 2 or adtype == 7) and (value in target_services):
             sensors['service'] = value
             sensors['index'] = target_services.index(value)
-        if adtype == 9 and (value in target_devices):
+        if (adtype == 8 or adtype == 9) and (value in target_devices):
             sensors['isRohmMedal'] = value
             sensors['index'] = target_devices.index(value)
 
@@ -208,9 +208,12 @@ while True:
     target_index = None
     isRohmMedal = None
     address = None
+    addrType = 'random'
 
     # 受信データについてBLEデバイス毎の処理
     for dev in devices:
+        if dev.rssi < target_rssi:
+            continue
         print("\nDevice %s (%s), RSSI=%d dB, Connectable=%s" % (dev.addr, dev.addrType, dev.rssi, dev.connectable))
         if len(argv) == 1:
             sensors = parser(dev)
@@ -222,6 +225,7 @@ while True:
         if target_index is not None:
             isRohmMedal = sensors.get('isRohmMedal')
             address = dev.addr
+            addrType = dev.addrType
             # print("    9 Complete Local Name =",isRohmMedal)
             break
     if (target_index is None) or (isRohmMedal is None) or (address is None):
@@ -230,9 +234,9 @@ while True:
     # GATT処理部1.接続
     print('GATT Connect to',address,isRohmMedal,'(' + str(target_index) + ')')
     try:
-        p = Peripheral(address, addrType='random')
+        p = Peripheral(address, addrType = addrType)
     except btle.BTLEDisconnectError as e:
-        print(e)
+        print('ERROR:',e)
         continue # スキャンへ戻る
     myDelegate = MyDelegate(DefaultDelegate)
     myDelegate.index = target_index
@@ -243,9 +247,11 @@ while True:
     print('CONNECTED')
     for svc in svcs:
         print(svc)
-    svc = p.getServiceByUUID( target_services[target_index] )
-    if svc is None:
-        print('ERROR, no service',target_services[target_index])
+    try:
+        svc = p.getServiceByUUID(target_services[target_index])
+    except btle.BTLEGattError as e:
+        print('ERROR:',e)
+        print('no service,',target_services[target_index])
         p.disconnect()
         del p
         continue  # スキャンへ戻る
@@ -253,17 +259,8 @@ while True:
     # GATT処理部3.Notify登録 Setup to turn notifications on
     hnd = notify_cnf_hnd[target_index]
     data = b'\x01\x00'
-    print('write Notify Config =', hex(hnd), data.hex() )
-    ch = None
-    if sensors.get('service') is None:
-        for serv in notify_services:
-            ch = svc.getCharacteristics(serv)
-            if len(ch) > 0:
-                print('found Notify Config service',serv,ch)
-                sensors['service'] = serv
-                ch.write( data )
-    if ch is None:
-        p.writeCharacteristic(hnd, data)
+    print('write Notify Config =', hex(hnd), data.hex(), end=' > ')
+    print(p.writeCharacteristic(hnd, data, withResponse=True).get('rsp'))
 
     val = p.readCharacteristic(hnd)
     print('read  Notify Config =', hex(hnd), val.hex() )
@@ -279,9 +276,11 @@ while True:
         try:
             notified = p.waitForNotifications(interval)
         except btle.BTLEDisconnectError as e:
-            print(e)
+            print('ERROR:',e)
             del notified
             break
+        time_udp += interval
+        time_amb += interval
         if notified:
             notified_val = myDelegate.value()
             if (type(notified_val) is bytes) and len(notified_val) > 0:
@@ -323,46 +322,51 @@ while True:
                     save(sensor + '.csv', s)
 
             # UDP送信
-            if time_udp < udp_interval / interval:
-                time_udp += 1
-            else:
+            if time_udp >= udp_interval / interval:
                 time_udp = 0
                 udp_sender_sensor(sensors)
 
             # クラウドへの送信処理
-            if int(ambient_chid) == 0 or not sensors or time_amb < ambient_interval / interval:
-                time_amb += 1
-                continue
-            time_amb = 0
-            body_dict['d1'] = sensors.get('Temperature')
-            body_dict['d2'] = sensors.get('Humidity')
-            if not body_dict['d2']:
-                body_dict['d2'] = sensors.get('Proximity')
-            body_dict['d3'] = sensors.get('Pressure')
-            body_dict['d4'] = sensors.get('Illuminance')
-            body_dict['d5'] = sensors.get('Accelerometer')
-            body_dict['d6'] = sensors.get('Geomagnetic')
-            body_dict['d7'] = sensors.get('Steps')
-            if not body_dict['d7']:
-                body_dict['d7'] = sensors.get('Color R')
-            body_dict['d8'] = sensors.get('Battery Level')
-            if not body_dict['d8']:
-                body_dict['d8'] = sensors.get('Color IR')
+            if time_amb >= ambient_interval / interval:
+                time_amb = 0
+                body_dict = {'writeKey':ambient_wkey}
+                body_dict['d1'] = sensors.get('Temperature')
+                body_dict['d2'] = sensors.get('Humidity')
+                if not body_dict['d2']:
+                    body_dict['d2'] = sensors.get('Proximity')
+                body_dict['d3'] = sensors.get('Pressure')
+                body_dict['d4'] = sensors.get('Illuminance')
+                if sensors.get('Button') is not None:
+                    for i in range(4):
+                        if body_dict['d' + str(i+1)] is None:
+                            body_dict['d' + str(i+1)] = sensors['Button'][3-i]
+                body_dict['d5'] = sensors.get('Accelerometer')
+                body_dict['d6'] = sensors.get('Geomagnetic')
+                body_dict['d7'] = sensors.get('Steps')
+                if body_dict['d7'] is None:
+                    body_dict['d7'] = sensors.get('Color R')
+                body_dict['d8'] = sensors.get('Battery Level')
+                if body_dict['d8'] is None:
+                    body_dict['d8'] = sensors.get('Color IR')
 
-            print(head_dict)                                # 送信ヘッダhead_dictを表示
-            print(body_dict)                                # 送信内容body_dictを表示
-            post = urllib.request.Request(url_s, json.dumps(body_dict).encode(), head_dict)
-                                                            # POSTリクエストデータを作成
-            try:                                            # 例外処理の監視を開始
-                res = urllib.request.urlopen(post)          # HTTPアクセスを実行
-            except Exception as e:                          # 例外処理発生時
-                print(e,url_s)                              # エラー内容と変数url_sを表示
-            res_str = res.read().decode()                   # 受信テキストを変数res_strへ
-            res.close()                                     # HTTPアクセスの終了
-            if len(res_str):                                # 受信テキストがあれば
-                print('Response:', res_str)                 # 変数res_strの内容を表示
-            else:
-                print('Done')                               # Doneを表示
+                for i in range(8):
+                    if body_dict['d' + str(i+1)] is None:
+                        del body_dict['d' + str(i+1)]
+                print(head_dict)                                # 送信ヘッダhead_dictを表示
+                print(body_dict)                                # 送信内容body_dictを表示
+                if int(ambient_chid) != 0:
+                    post = urllib.request.Request(url_s, json.dumps(body_dict).encode(), head_dict)
+                                                                    # POSTリクエストデータを作成
+                    try:                                            # 例外処理の監視を開始
+                        res = urllib.request.urlopen(post)          # HTTPアクセスを実行
+                    except Exception as e:                          # 例外処理発生時
+                        print(e,url_s)                              # エラー内容と変数url_sを表示
+                    res_str = res.read().decode()                   # 受信テキストを変数res_strへ
+                    res.close()                                     # HTTPアクセスの終了
+                    if len(res_str):                                # 受信テキストがあれば
+                        print('Response:', res_str)                 # 変数res_strの内容を表示
+                    else:
+                        print('Done')                               # Doneを表示
     p.disconnect()
     del p
     continue # スキャンへ戻る

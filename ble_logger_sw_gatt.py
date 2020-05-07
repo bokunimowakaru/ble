@@ -24,14 +24,14 @@
 
 ambient_chid='00000'                # ここにAmbientで取得したチャネルIDを入力
 ambient_wkey='0123456789abcdef'     # ここにはライトキーを入力
-ambient_interval = 30               # Ambientへの送信間隔
+ambient_interval = 10               # Ambientへの送信間隔
 interval = 1.01                     # 動作間隔
 savedata = True                     # ファイル保存の要否
 username = 'pi'                     # ファイル保存時の所有者名
 udp_sendto = '255.255.255.255'      # UDP送信宛先
 udp_port   = 1024                   # UDP送信先ポート番号
 udp_suffix = '4'                    # UDP送信デバイス名に付与する番号
-udp_interval = 30                   # UDP/GATT送信間隔
+udp_interval = 10                   # UDP/GATT送信間隔
 target_rssi = -60                   # 接続対象デバイスの最低受信強度
 
 # ここに接続するデバイス名とサービスUUIDを入力 ## Nordicは動作未確認
@@ -62,6 +62,7 @@ import socket
 
 url_s = 'https://ambidata.io/api/v2/channels/'+ambient_chid+'/data' # アクセス先
 head_dict = {'Content-Type':'application/json'} # ヘッダを変数head_dictへ
+amb_data_en = [0 ,0 ,0 ,0 ,0 ,0 ,0 ,0]          # Ambient送信データの有効/無効
 
 class MyDelegate(DefaultDelegate):
 
@@ -186,6 +187,25 @@ def parser(dev):
     print('    isRohmMedal   =',sensors['isRohmMedal'], '(' + str(sensors['index']) + ')')
     return sensors
 
+def sendToAmbient(ambient_chid, head_dict, body_dict):
+    print('\nto Ambient:\n  head',head_dict)            # 送信ヘッダhead_dictを表示
+    print('  body',body_dict)                          # 送信内容body_dictを表示
+    if int(ambient_chid) != 0:
+        post = urllib.request.Request(url_s, json.dumps(body_dict).encode(), head_dict)
+                                                        # POSTリクエストデータを作成
+        try:                                            # 例外処理の監視を開始
+            res = urllib.request.urlopen(post)          # HTTPアクセスを実行
+        except Exception as e:                          # 例外処理発生時
+            print('ERROR:',e,url_s)                     # エラー内容と変数url_sを表示
+            return
+        res_str = res.read().decode()                   # 受信テキストを変数res_strへ
+        res.close()                                     # HTTPアクセスの終了
+        if len(res_str):                                # 受信テキストがあれば
+            print('Response:', res_str)                 # 変数res_strの内容を表示
+        else:
+            print('Done')                               # Doneを表示
+    else:
+        print('チャネルID(ambient_chid)が設定されていません')
 
 # MAIN
 if getpass.getuser() != 'root':
@@ -194,8 +214,6 @@ if getpass.getuser() != 'root':
 scanner = btle.Scanner()
 time_amb = 999
 time_udp = 999
-if ambient_interval < 30:
-    ambient_interval = 30
 val = ''
 
 while True:
@@ -278,6 +296,7 @@ while True:
 
     # GATT処理部4.Notify待ち受け
     print('Waiting for Notify...')
+    hold_amb = None
     while True:
         try:
             notified = p.waitForNotifications(interval)
@@ -332,47 +351,55 @@ while True:
                 time_udp = 0
                 udp_sender_sensor(sensors)
 
+            # クラウドへの送信データ生成
+            body_dict = {'writeKey':ambient_wkey}
+            body_dict['d1'] = sensors.get('Temperature')
+            body_dict['d2'] = sensors.get('Humidity')
+            if not body_dict['d2']:
+                body_dict['d2'] = sensors.get('Proximity')
+            body_dict['d3'] = sensors.get('Pressure')
+            body_dict['d4'] = sensors.get('Illuminance')
+            if len(sensors.get('Button')) >= 4:
+                for i in range(4):
+                    if body_dict['d' + str(i+1)] is None:
+                        body_dict['d' + str(i+1)] = sensors['Button'][3-i]
+            body_dict['d5'] = sensors.get('Accelerometer')
+            body_dict['d6'] = sensors.get('Geomagnetic')
+            body_dict['d7'] = sensors.get('Steps')
+            if body_dict['d7'] is None:
+                body_dict['d7'] = sensors.get('Color R')
+            body_dict['d8'] = sensors.get('Battery Level')
+            if body_dict['d8'] is None:
+                body_dict['d8'] = sensors.get('Color IR')
+            for i in range(8):
+                if body_dict['d' + str(i+1)] is None:
+                    del body_dict['d' + str(i+1)]
+                    amb_data_en[i] = 0
+                else:
+                    amb_data_en[i] = 1
+
             # クラウドへの送信処理
-            if time_amb >= ambient_interval / interval:
+            if time_amb >= ambient_interval:
+                time_amb = 0
+                sendToAmbient(ambient_chid, head_dict, body_dict)
+                hold_amb = 'hold'
+            else:
+                hold_amb = body_dict
+
+        # HOLD完了後の送信
+        if time_amb >= ambient_interval:
+            if (type(hold_amb) is str) and (hold_amb == 'hold'):
                 time_amb = 0
                 body_dict = {'writeKey':ambient_wkey}
-                body_dict['d1'] = sensors.get('Temperature')
-                body_dict['d2'] = sensors.get('Humidity')
-                if not body_dict['d2']:
-                    body_dict['d2'] = sensors.get('Proximity')
-                body_dict['d3'] = sensors.get('Pressure')
-                body_dict['d4'] = sensors.get('Illuminance')
-                if len(sensors.get('Button')) >= 4:
-                    for i in range(4):
-                        if body_dict['d' + str(i+1)] is None:
-                            body_dict['d' + str(i+1)] = sensors['Button'][3-i]
-                body_dict['d5'] = sensors.get('Accelerometer')
-                body_dict['d6'] = sensors.get('Geomagnetic')
-                body_dict['d7'] = sensors.get('Steps')
-                if body_dict['d7'] is None:
-                    body_dict['d7'] = sensors.get('Color R')
-                body_dict['d8'] = sensors.get('Battery Level')
-                if body_dict['d8'] is None:
-                    body_dict['d8'] = sensors.get('Color IR')
-
                 for i in range(8):
-                    if body_dict['d' + str(i+1)] is None:
-                        del body_dict['d' + str(i+1)]
-                print(head_dict)                                # 送信ヘッダhead_dictを表示
-                print(body_dict)                                # 送信内容body_dictを表示
-                if int(ambient_chid) != 0:
-                    post = urllib.request.Request(url_s, json.dumps(body_dict).encode(), head_dict)
-                                                                    # POSTリクエストデータを作成
-                    try:                                            # 例外処理の監視を開始
-                        res = urllib.request.urlopen(post)          # HTTPアクセスを実行
-                    except Exception as e:                          # 例外処理発生時
-                        print(e,url_s)                              # エラー内容と変数url_sを表示
-                    res_str = res.read().decode()                   # 受信テキストを変数res_strへ
-                    res.close()                                     # HTTPアクセスの終了
-                    if len(res_str):                                # 受信テキストがあれば
-                        print('Response:', res_str)                 # 変数res_strの内容を表示
-                    else:
-                        print('Done')                               # Doneを表示
+                    if amb_data_en[i] == 1:
+                        body_dict['d' + str(i+1)] = 0
+                sendToAmbient(ambient_chid, head_dict, body_dict)
+                hold_amb = None
+            if type(hold_amb) is dict:
+                time_amb = 0
+                sendToAmbient(ambient_chid, head_dict, hold_amb)
+                hold_amb = 'hold'
     p.disconnect()
     del p
     continue # スキャンへ戻る

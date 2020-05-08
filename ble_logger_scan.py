@@ -27,7 +27,7 @@
 #
 #【実行方法】
 #   実行するときは sudoを付与してください
-#       sudo ./ble_logger_sens_scan.py &
+#       sudo ./ble_logger_scan.py &
 #
 #【参考文献】
 #   本プログラムを作成するにあたり下記を参考にしました
@@ -412,7 +412,7 @@ while True:
 pi@raspberrypi:~ $ cd
 pi@raspberrypi:~ $ git clone http://github.com/bokunimowakaru/rohm_iot_sensor_shield
 pi@raspberrypi:~ $ cd ~/rohm_iot_sensor_shield
-pi@raspberrypi:~/rohm_iot_sensor_shield $ sudo ./ble_logger_sens_scan.py
+pi@raspberrypi:~/rohm_iot_sensor_shield $ sudo ./ble_logger_scan.py
 
 Device xx:xx:xx:xx:xx:xx (public), RSSI=-69 dB, Connectable=True
     1 Flags = 06

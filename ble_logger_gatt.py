@@ -15,7 +15,7 @@
 #
 #【実行方法】
 #   実行するときは sudoを付与してください
-#       sudo ./ble_logger_sens_scan.py &
+#       sudo ./ble_logger_sens_gatt.py &
 #
 #【参考文献】
 #   本プログラムを作成するにあたり下記を参考にしました
@@ -427,8 +427,8 @@ while True:
             else:
                 hold_amb = body_dict
 
-        # HOLD完了後の送信
-        if time_amb >= ambient_interval:
+        # HOLD完了後の送信(ボタンのときだけ 10秒後に HOLD値送信 / 0送信)
+        if target_devtypes[target_index] == 'btn_s' and time_amb >= 10:
             if (type(hold_amb) is str) and (hold_amb == 'hold'):
                 time_amb = 0
                 for i in range(8):

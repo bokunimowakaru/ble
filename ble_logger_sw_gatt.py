@@ -24,7 +24,7 @@
 
 ambient_chid='00000'                # ここにAmbientで取得したチャネルIDを入力
 ambient_wkey='0123456789abcdef'     # ここにはライトキーを入力
-ambient_interval = 10               # Ambientへの送信間隔
+ambient_interval = 30               # Ambientへの送信間隔
 interval = 1.01                     # 動作間隔
 savedata = True                     # ファイル保存の要否
 username = 'pi'                     # ファイル保存時の所有者名
@@ -39,14 +39,32 @@ target_devices = [  'cq_ex21_ble_led',\
                     'cq_ex22_ble_sw',\
                     'Nordic_Blinky',\
                     'RBLE-DEV',\
-                    'AB Shutter3       ']
+                    'RBLE-DEV',\
+                    'AB Shutter3       ' ]
+target_devtypes = [ 'btn_s',\
+                    'btn_s',\
+                    'btn_s',\
+                    'btn_s',\
+                    'envir',\
+                    'btn_s' ]
 target_services = [ '00001523-1212-efde-1523-785feabcd123',\
                     '00001523-1212-efde-1523-785feabcd123',\
                     '00001523-1212-efde-1523-785feabcd123',\
                     '58831926-5f05-4267-ab01-b4968e8efce0',\
-                    '00001812-0000-1000-8000-00805f9b34fb']
-notify_cnf_hnd = [0x000e, 0x000e, 0x000e, 0x0013, 0x0014]
-notify_val_hnd = [0x000d, 0x000d, 0x000d, 0x0012, 0x0013]
+                    'b2b70000-0001-4cb2-b34a-6550cc0e998c',\
+                    '00001812-0000-1000-8000-00805f9b34fb' ]
+notify_cnf_hnd = [  [0x000e],\
+                    [0x000e],\
+                    [0x000e],\
+                    [0x0013],\
+                    [0x0013,0x0016,0x0019],\
+                    [0x0014] ]
+notify_val_hnd = [  [0x000d],\
+                    [0x000d],\
+                    [0x000d],\
+                    [0x0012],\
+                    [0x0012,0x0015,0x0018],\
+                    [0x0013] ]
 
 from bluepy import btle
 from bluepy.btle import Peripheral, DefaultDelegate
@@ -62,7 +80,6 @@ import socket
 
 url_s = 'https://ambidata.io/api/v2/channels/'+ambient_chid+'/data' # アクセス先
 head_dict = {'Content-Type':'application/json'} # ヘッダを変数head_dictへ
-amb_data_en = [0 ,0 ,0 ,0 ,0 ,0 ,0 ,0]          # Ambient送信データの有効/無効
 
 class MyDelegate(DefaultDelegate):
 
@@ -70,13 +87,15 @@ class MyDelegate(DefaultDelegate):
         DefaultDelegate.__init__(self)
         self.index = -1
         self.val = b'\x00'
+        self.col = 0
 
     def handleNotification(self, cHandle, data):
         if self.index < 0:
             return
-        print('\nHandle =',hex(cHandle),', Notify =',data.hex())
-        if cHandle == notify_val_hnd[self.index]:
+        print('\ndev =' + str(self.index), 'Handle =',hex(cHandle),', Notify =',data.hex())
+        if cHandle in notify_val_hnd[self.index]:
             self.val = data
+            self.col = notify_val_hnd[self.index].index(cHandle)
 
     def value(self):
         return self.val
@@ -109,7 +128,7 @@ def udp_sender_sensor(sensors):
             udp_sender( 'press_' + udp_suffix + ',' + str(round(d1,2)) + ' ,' + str(round(d3,3)) )
             return
         if d2 is not None and d3 is not None:
-            udp_sender( 'envir._' + udp_suffix + ',' + str(round(d1,2)) + ' ,' + str(round(d2,2)) + ' ,' + str(round(d3,3)) )
+            udp_sender( 'envir_' + udp_suffix + ',' + str(round(d1,2)) + ' ,' + str(round(d2,2)) + ' ,' + str(round(d3,3)) )
             return
         udp_sender( 'temp._' + udp_suffix + ',' + str(round(d1,2)) )
         return
@@ -271,6 +290,9 @@ while True:
     print('CONNECTED')
     for svc in svcs:
         print(svc)
+        if svc.uuid in target_services:
+            target_index = target_services.index(svc.uuid)
+            myDelegate.index = target_index
     try:
         svc = p.getServiceByUUID(target_services[target_index])
     except btle.BTLEGattError as e:
@@ -281,22 +303,23 @@ while True:
         continue  # スキャンへ戻る
 
     # GATT処理部3.Notify登録 Setup to turn notifications on
-    hnd = notify_cnf_hnd[target_index]
-    data = b'\x01\x00'
-    print('write Notify Config =', hex(hnd), data.hex(), end=' > ')
-    print(p.writeCharacteristic(hnd, data, withResponse=True).get('rsp'))
-
-    val = p.readCharacteristic(hnd)
-    print('read  Notify Config =', hex(hnd), val.hex() )
-    if val != data:
-        print('ERROR: Notifications Setting')
-        p.disconnect()
-        del p
-        continue # スキャンへ戻る
+    for hnd in notify_cnf_hnd[target_index]:
+        data = b'\x01\x00'
+        print('write Notify Config =', hex(hnd), data.hex(), end=' > ')
+        print(p.writeCharacteristic(hnd, data, withResponse=True).get('rsp'))
+        val = p.readCharacteristic(hnd)
+        print('read  Notify Config =', hex(hnd), val.hex() )
+        if val != data:
+            print('ERROR: Notifications Setting')
+            p.disconnect()
+            del p
+            continue # スキャンへ戻る
 
     # GATT処理部4.Notify待ち受け
     print('Waiting for Notify...')
     hold_amb = None
+    body_dict = {'writeKey':ambient_wkey}
+    amb_data_en = [0 ,0 ,0 ,0 ,0 ,0 ,0 ,0]          # Ambient送信データの有効/無効
     while True:
         try:
             notified = p.waitForNotifications(interval)
@@ -309,8 +332,28 @@ while True:
         if notified:
             notified_val = myDelegate.value()
             if (type(notified_val) is bytes) and len(notified_val) > 0:
-                print('    Value =',notified_val.hex())
-                sensors['Button'] = format(notified_val[0], '04b')
+                if target_devtypes[target_index] == 'btn_s':
+                    print('    Value =', notified_val.hex())
+                    sensors['Button'] = format(notified_val[0], '04b')
+                if target_devtypes[target_index] == 'envir':
+                    print('    Column=', myDelegate.col)
+                    val = 0
+                    for i in range(len(notified_val)):
+                        val += notified_val[i] << (i * 8)
+                    print('    Value =', notified_val.hex(),'('+str(val)+')')
+                    if myDelegate.col == 0:
+                        if val >= 32768:
+                            val -= 65536
+                        sensors['Temperature'] = val / 100
+                        print('    Temp. =', sensors['Temperature'])
+                    if myDelegate.col == 1:
+                        if val >= 32768:
+                            val -= 65536
+                        sensors['Humidity'] = val / 100
+                        print('    Humid.=', sensors['Humidity'])
+                    if myDelegate.col == 2:
+                        sensors['Pressure'] = val / 1000
+                        print('    Press.=', sensors['Pressure'])
 
             # センサ個別値のファイルを保存
             date=datetime.datetime.today()
@@ -352,14 +395,13 @@ while True:
                 udp_sender_sensor(sensors)
 
             # クラウドへの送信データ生成
-            body_dict = {'writeKey':ambient_wkey}
             body_dict['d1'] = sensors.get('Temperature')
             body_dict['d2'] = sensors.get('Humidity')
             if not body_dict['d2']:
                 body_dict['d2'] = sensors.get('Proximity')
             body_dict['d3'] = sensors.get('Pressure')
             body_dict['d4'] = sensors.get('Illuminance')
-            if len(sensors.get('Button')) >= 4:
+            if sensors.get('Button') is not None and len(sensors.get('Button')) >= 4:
                 for i in range(4):
                     if body_dict['d' + str(i+1)] is None:
                         body_dict['d' + str(i+1)] = sensors['Button'][3-i]
@@ -374,7 +416,6 @@ while True:
             for i in range(8):
                 if body_dict['d' + str(i+1)] is None:
                     del body_dict['d' + str(i+1)]
-                    amb_data_en[i] = 0
                 else:
                     amb_data_en[i] = 1
 
@@ -390,7 +431,6 @@ while True:
         if time_amb >= ambient_interval:
             if (type(hold_amb) is str) and (hold_amb == 'hold'):
                 time_amb = 0
-                body_dict = {'writeKey':ambient_wkey}
                 for i in range(8):
                     if amb_data_en[i] == 1:
                         body_dict['d' + str(i+1)] = 0
@@ -456,4 +496,51 @@ Characteristic value/descriptor: 00
 Characteristic value was written successfully
 Notification handle = 0x0012 value: 01
 Notification handle = 0x0012 value: 01
+------------------------------------------------------------------------------------------
+
+pi@stretch:~ $ gatttool -I -t public -b 74:90:50:ff:ff:ff
+[74:90:50:ff:ff:ff][LE]> connect
+Attempting to connect to 74:90:50:ff:ff:ff
+Connection successful
+
+[74:90:50:ff:ff:ff][LE]> primary
+attr handle: 0x0001, end grp handle: 0x000b uuid: 00001800-0000-1000-8000-00805f9b34fb
+attr handle: 0x000c, end grp handle: 0x000f uuid: 00001801-0000-1000-8000-00805f9b34fb
+attr handle: 0x0010, end grp handle: 0x0019 uuid: b2b70000-0001-4cb2-b34a-6550cc0e998c
+attr handle: 0x001a, end grp handle: 0x001d uuid: b2b70000-0003-4cb2-b34a-6550cc0e998c
+
+[74:90:50:ff:ff:ff][LE]> char-desc
+handle: 0x0001, uuid: 00002800-0000-1000-8000-00805f9b34fb
+handle: 0x0002, uuid: 00002803-0000-1000-8000-00805f9b34fb
+handle: 0x0003, uuid: 00002a00-0000-1000-8000-00805f9b34fb
+handle: 0x0004, uuid: 00002803-0000-1000-8000-00805f9b34fb
+handle: 0x0005, uuid: 00002a01-0000-1000-8000-00805f9b34fb
+handle: 0x0006, uuid: 00002803-0000-1000-8000-00805f9b34fb
+handle: 0x0007, uuid: 00002a04-0000-1000-8000-00805f9b34fb
+handle: 0x0008, uuid: 00002803-0000-1000-8000-00805f9b34fb
+handle: 0x0009, uuid: 00002aa6-0000-1000-8000-00805f9b34fb
+handle: 0x000a, uuid: 00002803-0000-1000-8000-00805f9b34fb
+handle: 0x000b, uuid: 00002ac9-0000-1000-8000-00805f9b34fb
+
+handle: 0x000c, uuid: 00002800-0000-1000-8000-00805f9b34fb
+handle: 0x000d, uuid: 00002803-0000-1000-8000-00805f9b34fb
+handle: 0x000e, uuid: 00002a05-0000-1000-8000-00805f9b34fb
+handle: 0x000f, uuid: 00002902-0000-1000-8000-00805f9b34fb
+
+BME280
+handle: 0x0010, uuid: 2a042a01-2a00-1800-2803-280228012800
+handle: 0x0011, uuid: 00002803-0000-1000-8000-00805f9b34fb
+handle: 0x0012, uuid: 00002a6e-0000-1000-8000-00805f9b34fb Temperature, resolution of 0.01 Celsius
+handle: 0x0013, uuid: 00002902-0000-1000-8000-00805f9b34fb <- Config
+handle: 0x0014, uuid: 00002803-0000-1000-8000-00805f9b34fb
+handle: 0x0015, uuid: 00002a6f-0000-1000-8000-00805f9b34fb Humidity, resolution of 0.1%
+handle: 0x0016, uuid: 00002902-0000-1000-8000-00805f9b34fb <- Config
+handle: 0x0017, uuid: 00002803-0000-1000-8000-00805f9b34fb
+handle: 0x0018, uuid: 00002a6d-0000-1000-8000-00805f9b34fb Pressure, resolution of 0.1Pa
+handle: 0x0019, uuid: 00002902-0000-1000-8000-00805f9b34fb <- Config
+
+handle: 0x001a, uuid: 2a042a01-2a00-1800-2803-280228012800
+handle: 0x001b, uuid: 00002803-0000-1000-8000-00805f9b34fb
+handle: 0x001c, uuid: 00002a56-0000-1000-8000-00805f9b34fb
+handle: 0x001d, uuid: 00002902-0000-1000-8000-00805f9b34fb
 '''

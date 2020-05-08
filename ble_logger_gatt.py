@@ -531,19 +531,13 @@ handle: 0x001b, uuid: 00002803-0000-1000-8000-00805f9b34fb
 handle: 0x001c, uuid: 00002a56-0000-1000-8000-00805f9b34fb
 handle: 0x001d, uuid: 00002902-0000-1000-8000-00805f9b34fb
 ------------------------------------------------------------------------------------------
-pi@stretch:~/ble $ sudo ./ble_logger_gatt.py
+pi@raspberrypi:~/ble $ sudo ./ble_logger_gatt.py
 
 Device 74:90:50:ff:ff:ff (public), RSSI=-35 dB, Connectable=True
     1 Flags = 06 (2)
     9 Complete Local Name = RBLE-DEV (8)
     isRohmMedal   = RBLE-DEV (3)
-GATT Connect to 74:90:50:ff:ff:ff RBLE-DEV (3)
-ERROR: Failed to connect to peripheral 74:90:50:ff:ff:ff, addr type: public
 
-Device 74:90:50:ff:ff:ff (public), RSSI=-53 dB, Connectable=True
-    1 Flags = 06 (2)
-    9 Complete Local Name = RBLE-DEV (8)
-    isRohmMedal   = RBLE-DEV (3)
 GATT Connect to 74:90:50:ff:ff:ff RBLE-DEV (3)
 CONNECTED
 Service <uuid=Generic Attribute handleStart=12 handleEnd=15>
@@ -558,12 +552,19 @@ write Notify Config = 0x19 0100 > ['wr']
 read  Notify Config = 0x19 0100
 Waiting for Notify...
 
-dev =4 Handle = 0x12 , Notify = eb09
-    Column= 0
-    Value = eb09 (2539)
-    Temp. = 25.39
-UDP Sender = temp._4,25.39
+dev =4, Handle = 0x12, Notify = 2e0a
+    Temperature   = 26.06 ℃
 
+dev =4, Handle = 0x15, Notify = d416
+    Humidity      = 58.44 %
 
+dev =4, Handle = 0x18, Notify = 78c50e00
+    Pressure      = 968.056 hPa
 
+UDP Sender = envir_4,26.06 ,58.44 ,968.056
+
+to Ambient:
+    head {'Content-Type': 'application/json'}
+    body {'d3': 968.056, 'writeKey': '0123456789abcdef', 'd1': 26.06, 'd2': 58.44}
+    Done
 '''

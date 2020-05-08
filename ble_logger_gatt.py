@@ -92,7 +92,7 @@ class MyDelegate(DefaultDelegate):
     def handleNotification(self, cHandle, data):
         if self.index < 0:
             return
-        print('\ndev =' + str(self.index), 'Handle =',hex(cHandle),', Notify =',data.hex())
+        print('\ndev =' + str(self.index) + ', Handle = ' + hex(cHandle) + ', Notify = ' + data.hex())
         if cHandle in notify_val_hnd[self.index]:
             self.val = data
             self.col = notify_val_hnd[self.index].index(cHandle)
@@ -111,7 +111,7 @@ def udp_sender(udp):
         exit()                                              # プログラムの終了
     if sock:                                                # 作成に成功したとき
         udp = udp.strip('\r\n')                             # 改行を削除してudpへ
-        print('UDP Sender =', udp)
+        print('\nUDP Sender =', udp)
         udp=(udp + '\n').encode()                           # 改行追加とバイト列変換
         sock.sendto(udp,('255.255.255.255',udp_port))       # UDPブロードキャスト送信
         sock.close()                                        # ソケットの切断
@@ -151,19 +151,6 @@ def save(filename, data):
     fp.write(data + '\n')                               # dataをファイルへ
     fp.close()                                          # ファイルを閉じる
     chown(filename, username, username)                 # 所有者をpiユーザへ
-
-def payval(num, bytes=1, sign=False):
-    global val
-    a = 0
-    if num < 2 or len(val) < (num - 2 + bytes) * 2:
-        print('ERROR: data length',len(val))
-        return 0
-    for i in range(0, bytes):
-        a += (256 ** i) * int(val[(num - 2 + i) * 2 : (num - 1 + i) * 2],16)
-    if sign:
-        if a >= 2 ** (bytes * 8 - 1):
-            a -= 2 ** (bytes * 8)
-    return a
 
 def printval(dict, name, n, unit):
     value = dict.get(name)
@@ -207,8 +194,8 @@ def parser(dev):
     return sensors
 
 def sendToAmbient(ambient_chid, head_dict, body_dict):
-    print('\nto Ambient:\n  head',head_dict)            # 送信ヘッダhead_dictを表示
-    print('  body',body_dict)                          # 送信内容body_dictを表示
+    print('\nto Ambient:\n    head',head_dict)          # 送信ヘッダhead_dictを表示
+    print('    body',body_dict)                         # 送信内容body_dictを表示
     if int(ambient_chid) != 0:
         post = urllib.request.Request(url_s, json.dumps(body_dict).encode(), head_dict)
                                                         # POSTリクエストデータを作成
@@ -220,9 +207,9 @@ def sendToAmbient(ambient_chid, head_dict, body_dict):
         res_str = res.read().decode()                   # 受信テキストを変数res_strへ
         res.close()                                     # HTTPアクセスの終了
         if len(res_str):                                # 受信テキストがあれば
-            print('Response:', res_str)                 # 変数res_strの内容を表示
+            print('    Response:', res_str)             # 変数res_strの内容を表示
         else:
-            print('Done')                               # Doneを表示
+            print('    Done')                           # Doneを表示
     else:
         print('チャネルID(ambient_chid)が設定されていません')
 
@@ -231,8 +218,6 @@ if getpass.getuser() != 'root':
     print('使用方法: sudo', argv[0], '[対象MACアドレス]...')
     exit()
 scanner = btle.Scanner()
-time_amb = 999
-time_udp = 999
 val = ''
 
 while True:
@@ -275,7 +260,7 @@ while True:
         continue  # スキャンへ戻る
 
     # GATT処理部1.接続
-    print('GATT Connect to',address,isRohmMedal,'(' + str(target_index) + ')')
+    print('\nGATT Connect to',address,isRohmMedal,'(' + str(target_index) + ')')
     try:
         p = Peripheral(address, addrType = addrType)
     except btle.BTLEDisconnectError as e:
@@ -320,6 +305,8 @@ while True:
     hold_amb = None
     body_dict = {'writeKey':ambient_wkey}
     amb_data_en = [0 ,0 ,0 ,0 ,0 ,0 ,0 ,0]          # Ambient送信データの有効/無効
+    time_amb = ambient_interval - 7
+    time_udp = udp_interval - 7
     while True:
         try:
             notified = p.waitForNotifications(interval)
@@ -333,27 +320,27 @@ while True:
             notified_val = myDelegate.value()
             if (type(notified_val) is bytes) and len(notified_val) > 0:
                 if target_devtypes[target_index] == 'btn_s':
-                    print('    Value =', notified_val.hex())
                     sensors['Button'] = format(notified_val[0], '04b')
+                    printval(sensors, 'Button', 0, '')
                 if target_devtypes[target_index] == 'envir':
-                    print('    Column=', myDelegate.col)
+                    # print('    Column=', myDelegate.col)
                     val = 0
                     for i in range(len(notified_val)):
                         val += notified_val[i] << (i * 8)
-                    print('    Value =', notified_val.hex(),'('+str(val)+')')
+                    # print('    Value =', notified_val.hex(),'('+str(val)+')')
                     if myDelegate.col == 0:
                         if val >= 32768:
                             val -= 65536
                         sensors['Temperature'] = val / 100
-                        print('    Temp. =', sensors['Temperature'])
+                        printval(sensors, 'Temperature', 2, '℃')
                     if myDelegate.col == 1:
                         if val >= 32768:
                             val -= 65536
                         sensors['Humidity'] = val / 100
-                        print('    Humid.=', sensors['Humidity'])
+                        printval(sensors, 'Humidity', 2, '%')
                     if myDelegate.col == 2:
                         sensors['Pressure'] = val / 1000
-                        print('    Press.=', sensors['Pressure'])
+                        printval(sensors, 'Pressure', 3, 'hPa')
 
             # センサ個別値のファイルを保存
             date=datetime.datetime.today()
@@ -498,7 +485,7 @@ Notification handle = 0x0012 value: 01
 Notification handle = 0x0012 value: 01
 ------------------------------------------------------------------------------------------
 
-pi@stretch:~ $ gatttool -I -t public -b 74:90:50:ff:ff:ff
+pi@raspberrypi:~ $ gatttool -I -t public -b 74:90:50:ff:ff:ff
 [74:90:50:ff:ff:ff][LE]> connect
 Attempting to connect to 74:90:50:ff:ff:ff
 Connection successful
@@ -543,4 +530,40 @@ handle: 0x001a, uuid: 2a042a01-2a00-1800-2803-280228012800
 handle: 0x001b, uuid: 00002803-0000-1000-8000-00805f9b34fb
 handle: 0x001c, uuid: 00002a56-0000-1000-8000-00805f9b34fb
 handle: 0x001d, uuid: 00002902-0000-1000-8000-00805f9b34fb
+------------------------------------------------------------------------------------------
+pi@stretch:~/ble $ sudo ./ble_logger_gatt.py
+
+Device 74:90:50:ff:ff:ff (public), RSSI=-35 dB, Connectable=True
+    1 Flags = 06 (2)
+    9 Complete Local Name = RBLE-DEV (8)
+    isRohmMedal   = RBLE-DEV (3)
+GATT Connect to 74:90:50:ff:ff:ff RBLE-DEV (3)
+ERROR: Failed to connect to peripheral 74:90:50:ff:ff:ff, addr type: public
+
+Device 74:90:50:ff:ff:ff (public), RSSI=-53 dB, Connectable=True
+    1 Flags = 06 (2)
+    9 Complete Local Name = RBLE-DEV (8)
+    isRohmMedal   = RBLE-DEV (3)
+GATT Connect to 74:90:50:ff:ff:ff RBLE-DEV (3)
+CONNECTED
+Service <uuid=Generic Attribute handleStart=12 handleEnd=15>
+Service <uuid=Generic Access handleStart=1 handleEnd=11>
+Service <uuid=b2b70000-0001-4cb2-b34a-6550cc0e998c handleStart=16 handleEnd=25>
+Service <uuid=b2b70000-0003-4cb2-b34a-6550cc0e998c handleStart=26 handleEnd=29>
+write Notify Config = 0x13 0100 > ['wr']
+read  Notify Config = 0x13 0100
+write Notify Config = 0x16 0100 > ['wr']
+read  Notify Config = 0x16 0100
+write Notify Config = 0x19 0100 > ['wr']
+read  Notify Config = 0x19 0100
+Waiting for Notify...
+
+dev =4 Handle = 0x12 , Notify = eb09
+    Column= 0
+    Value = eb09 (2539)
+    Temp. = 25.39
+UDP Sender = temp._4,25.39
+
+
+
 '''

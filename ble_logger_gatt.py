@@ -172,7 +172,7 @@ def printval(dict, name, n, unit):
 
 def parser(dev):
     sensors = dict()
-    sensors['isRohmMedal'] = None
+    sensors['isTargetDev'] = None
     sensors['service'] = None
     sensors['index'] = None
     sensors['vals'] = None
@@ -184,14 +184,14 @@ def parser(dev):
             sensors['service'] = value
             sensors['index'] = target_services.index(value)
         if (adtype == 8 or adtype == 9) and (value in target_devices):
-            sensors['isRohmMedal'] = value
+            sensors['isTargetDev'] = value
             sensors['index'] = target_devices.index(value)
 
         # ビーコンデータ
         if desc == 'Manufacturer':
             sensors['vals'] = value
 
-    print('    isRohmMedal   =',sensors['isRohmMedal'], '(' + str(sensors['index']) + ')')
+    print('    isTargetDev   =',sensors['isTargetDev'], '(' + str(sensors['index']) + ')')
     return sensors
 
 def sendToAmbient(ambient_chid, head_dict, body_dict):
@@ -255,7 +255,7 @@ while True:
         continue
     sensors = dict()
     target_index = None
-    isRohmMedal = None
+    isTargetDev = None
     address = None
     addrType = 'random'
 
@@ -272,16 +272,16 @@ while True:
                     sensors = parser(dev)
         target_index = sensors.get('index')
         if target_index is not None:
-            isRohmMedal = sensors.get('isRohmMedal')
+            isTargetDev = sensors.get('isTargetDev')
             address = dev.addr
             addrType = dev.addrType
-            # print("    9 Complete Local Name =",isRohmMedal)
+            # print("    9 Complete Local Name =",isTargetDev)
             break
-    if (target_index is None) or (isRohmMedal is None) or (address is None):
+    if (target_index is None) or (isTargetDev is None) or (address is None):
         continue  # スキャンへ戻る
 
     # GATT処理部1.接続
-    print('\nGATT Connect to',address,isRohmMedal,'(' + str(target_index) + ')')
+    print('\nGATT Connect to',address,isTargetDev,'(' + str(target_index) + ')')
     try:
         p = Peripheral(address, addrType = addrType)
     except Exception as e:
@@ -388,7 +388,7 @@ while True:
                         continue
                     s = date.strftime('%Y/%m/%d %H:%M')
                     # s += ', ' + sensor
-                    if sensor == 'isRohmMedal' or sensor == 'service' or sensor == 'index' or sensor == 'vals':
+                    if sensor == 'isTargetDev' or sensor == 'service' or sensor == 'index' or sensor == 'vals':
                         continue
                     if sensor == 'Button':
                         s += ', ' + sensors['Button'][3]
@@ -581,7 +581,7 @@ pi@raspberrypi:~/ble $ sudo ./ble_logger_gatt.py
 Device 74:90:50:ff:ff:ff (public), RSSI=-35 dB, Connectable=True
     1 Flags = 06 (2)
     9 Complete Local Name = RBLE-DEV (8)
-    isRohmMedal   = RBLE-DEV (3)
+    isTargetDev   = RBLE-DEV (3)
 
 GATT Connect to 74:90:50:ff:ff:ff RBLE-DEV (3)
 CONNECTED

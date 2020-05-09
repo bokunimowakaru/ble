@@ -213,6 +213,26 @@ def sendToAmbient(ambient_chid, head_dict, body_dict):
     else:
         print('チャネルID(ambient_chid)が設定されていません')
 
+# 設定確認
+if ambient_interval < 30:
+    ambient_interval = 30
+if udp_interval <= interval:
+    udp_interval = interval + 1
+if len(udp_suffix) > 1:
+    udp_suffix = udp_suffix[0]
+if target_rssi > -40:
+    target_rssi = -50
+i = len(target_devices)
+if  len(target_devtypes) != i or \
+    len(target_services) != i or \
+    len(notify_cnf_hnd) != i or \
+    len(notify_val_hnd) != i :
+        print('ERROR: デバイス情報に誤りがあります')
+        exit
+if len(ambient_wkey) != 16:
+    print('ERROR: Ambientライトキーの桁数に誤りがあります')
+    exit
+
 # MAIN
 if getpass.getuser() != 'root':
     print('使用方法: sudo', argv[0], '[対象MACアドレス]...')
@@ -297,7 +317,7 @@ while True:
         continue  # スキャンへ戻る
 
     # GATT処理部3.Notify登録 Setup to turn notifications on
-    e = None
+    err = None
     for hnd in notify_cnf_hnd[target_index]:
         data = b'\x01\x00'
         print('write Notify Config =', hex(hnd), data.hex(), end=' > ')
@@ -307,13 +327,14 @@ while True:
         except Exception as e:
         # except btle.BTLEDisconnectError as e:
             print('ERROR:',e)
+            err = e
             break # forを抜ける
         print('read  Notify Config =', hex(hnd), val.hex() )
         if val != data:
-            e = 'Notifications Verify Error'
-            print('ERROR:',e)
+            err = 'Notifications Verify Error'
+            print('ERROR:',err)
             break # forを抜ける
-    if e is not None:
+    if err is not None:
         del p
         continue  # スキャンへ戻る
 
@@ -329,7 +350,6 @@ while True:
             notified = p.waitForNotifications(interval)
         except btle.BTLEDisconnectError as e:
             print('ERROR:',e)
-            del notified
             break
         time_udp += interval
         time_amb += interval
@@ -444,8 +464,15 @@ while True:
                 time_amb = 0
                 sendToAmbient(ambient_chid, head_dict, hold_amb)
                 hold_amb = 'hold'
-    p.disconnect()
-    del p
+    try:
+        del notified
+    except NameError as e:
+        print('debug:',e)
+    try:
+        p.disconnect()
+        del p
+    except Exception as e:
+        print('ERROR:',e)
     continue # スキャンへ戻る
 
 

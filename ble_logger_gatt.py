@@ -263,7 +263,8 @@ while True:
     print('\nGATT Connect to',address,isRohmMedal,'(' + str(target_index) + ')')
     try:
         p = Peripheral(address, addrType = addrType)
-    except btle.BTLEDisconnectError as e:
+    except Exception as e:
+    # except btle.BTLEDisconnectError as e:
         print('ERROR:',e)
         continue # スキャンへ戻る
     myDelegate = MyDelegate(DefaultDelegate)
@@ -271,7 +272,14 @@ while True:
     p.setDelegate(myDelegate)
 
     # GATT処理部2.サービス確認
-    svcs = p.getServices();
+    try:
+        svcs = p.getServices();
+    except Exception as e:
+    # except btle.BTLEDisconnectError as e:
+    # except btle.BrokenPipeError as e:
+        print('ERROR:',e)
+        del p
+        continue # スキャンへ戻る
     print('CONNECTED')
     for svc in svcs:
         print(svc)
@@ -280,7 +288,8 @@ while True:
             myDelegate.index = target_index
     try:
         svc = p.getServiceByUUID(target_services[target_index])
-    except btle.BTLEGattError as e:
+    except Exception as e:
+    # except btle.BTLEGattError as e:
         print('ERROR:',e)
         print('no service,',target_services[target_index])
         p.disconnect()
@@ -288,17 +297,25 @@ while True:
         continue  # スキャンへ戻る
 
     # GATT処理部3.Notify登録 Setup to turn notifications on
+    e = None
     for hnd in notify_cnf_hnd[target_index]:
         data = b'\x01\x00'
         print('write Notify Config =', hex(hnd), data.hex(), end=' > ')
-        print(p.writeCharacteristic(hnd, data, withResponse=True).get('rsp'))
-        val = p.readCharacteristic(hnd)
+        try:
+            print(p.writeCharacteristic(hnd, data, withResponse=True).get('rsp'))
+            val = p.readCharacteristic(hnd)
+        except Exception as e:
+        # except btle.BTLEDisconnectError as e:
+            print('ERROR:',e)
+            break # forを抜ける
         print('read  Notify Config =', hex(hnd), val.hex() )
         if val != data:
-            print('ERROR: Notifications Setting')
-            p.disconnect()
-            del p
-            continue # スキャンへ戻る
+            e = 'Notifications Verify Error'
+            print('ERROR:',e)
+            break # forを抜ける
+    if e is not None:
+        del p
+        continue  # スキャンへ戻る
 
     # GATT処理部4.Notify待ち受け
     print('Waiting for Notify...')

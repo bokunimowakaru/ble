@@ -19,6 +19,7 @@
 #
 #【参考文献】
 #   本プログラムを作成するにあたり下記を参考にしました
+#   https://ianharvey.github.io/bluepy-doc/
 #   https://ianharvey.github.io/bluepy-doc/scanner.html
 #   https://ianharvey.github.io/bluepy-doc/notifications.html
 

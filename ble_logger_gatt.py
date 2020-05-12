@@ -2,7 +2,7 @@
 # coding: utf-8
 
 ################################################################################
-# BLE Logger SW GATT
+# BLE Logger GATT
 #
 # git clone https://github.com/bokunimowakaru/ble.git
 #
@@ -26,7 +26,7 @@
 ambient_chid='00000'                # ここにAmbientで取得したチャネルIDを入力
 ambient_wkey='0123456789abcdef'     # ここにはライトキーを入力
 ambient_interval = 30               # Ambientへの送信間隔
-interval = 1.01                     # 動作間隔
+interval = 1.01                     # Blutooth LE 受信動作間隔
 savedata = True                     # ファイル保存の要否
 username = 'pi'                     # ファイル保存時の所有者名
 udp_sendto = '255.255.255.255'      # UDP送信宛先
@@ -108,7 +108,7 @@ def udp_sender(udp):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM) # ソケットを作成
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST,1)
     except Exception as e:                                  # 例外処理発生時
-        print('ERROR:',e)                                            # エラー内容を表示
+        print('ERROR:',e)                                   # エラー内容を表示
         exit()                                              # プログラムの終了
     if sock:                                                # 作成に成功したとき
         udp = udp.strip('\r\n')                             # 改行を削除してudpへ
@@ -137,12 +137,32 @@ def udp_sender_sensor(sensors):
     if d1 is not None:
         udp_sender( 'illum_' + udp_suffix + ',' + str(d1) )
         return
-    if len(sensors.get('Button')) >= 4:
+    if sensors.get('Button') is not None and len(sensors.get('Button')) >= 4:
         udp_sender( 'btn_s_' + udp_suffix + ',' + sensors['Button'][3]\
                                          + ', ' + sensors['Button'][2]\
                                          + ', ' + sensors['Button'][1]\
                                          + ', ' + sensors['Button'][0])
         return
+
+def sendToAmbient(ambient_chid, head_dict, body_dict):
+    print('\nto Ambient:')
+    print('    body',body_dict)                         # 送信内容body_dictを表示
+    if int(ambient_chid) != 0:
+        post = urllib.request.Request(url_s, json.dumps(body_dict).encode(), head_dict)
+                                                        # POSTリクエストデータを作成
+        try:                                            # 例外処理の監視を開始
+            res = urllib.request.urlopen(post)          # HTTPアクセスを実行
+        except Exception as e:                          # 例外処理発生時
+            print('ERROR:',e,url_s)                     # エラー内容と変数url_sを表示
+            return
+        res_str = res.read().decode()                   # 受信テキストを変数res_strへ
+        res.close()                                     # HTTPアクセスの終了
+        if len(res_str):                                # 受信テキストがあれば
+            print('    Response:', res_str)             # 変数res_strの内容を表示
+        else:
+            print('    Done')                           # Doneを表示
+    else:
+        print('チャネルID(ambient_chid)が設定されていません')
 
 def save(filename, data):
     try:
@@ -177,7 +197,7 @@ def parser(dev):
     sensors['index'] = None
     sensors['vals'] = None
     for (adtype, desc, value) in dev.getScanData():
-        print("  %3d %s = %s (%d)" % (adtype, desc, value, len(value)))  # ad_t=[{8:'Short Local Name'},{9:'Complete Local Name'}]
+        print('  %3d %s = %s (%d)' % (adtype, desc, value, len(value)))  # ad_t=[{8:'Short Local Name'},{9:'Complete Local Name'}]
 
         # GATT サービス
         if (adtype == 2 or adtype == 7) and (value in target_services):
@@ -194,31 +214,29 @@ def parser(dev):
     print('    isTargetDev   =',sensors['isTargetDev'], '(' + str(sensors['index']) + ')')
     return sensors
 
-def sendToAmbient(ambient_chid, head_dict, body_dict):
-    print('\nto Ambient:\n    head',head_dict)          # 送信ヘッダhead_dictを表示
-    print('    body',body_dict)                         # 送信内容body_dictを表示
-    if int(ambient_chid) != 0:
-        post = urllib.request.Request(url_s, json.dumps(body_dict).encode(), head_dict)
-                                                        # POSTリクエストデータを作成
-        try:                                            # 例外処理の監視を開始
-            res = urllib.request.urlopen(post)          # HTTPアクセスを実行
-        except Exception as e:                          # 例外処理発生時
-            print('ERROR:',e,url_s)                     # エラー内容と変数url_sを表示
-            return
-        res_str = res.read().decode()                   # 受信テキストを変数res_strへ
-        res.close()                                     # HTTPアクセスの終了
-        if len(res_str):                                # 受信テキストがあれば
-            print('    Response:', res_str)             # 変数res_strの内容を表示
-        else:
-            print('    Done')                           # Doneを表示
-    else:
-        print('チャネルID(ambient_chid)が設定されていません')
-
 # 設定確認
+if getpass.getuser() != 'root':
+    print('使用方法: sudo', argv[0], '[対象MACアドレス]...')
+    exit()
+if udp_sendto == '255.255.255.255':
+    p0 = subprocess.Popen(['ifconfig'], stdout=subprocess.PIPE)
+    p1 = subprocess.Popen(['grep','broadcast'], stdin=p0.stdout, stdout=subprocess.PIPE)
+    p0.stdout.close()
+    del p0
+    ips = p1.communicate()[0].decode()
+    p1.stdout.close()
+    del p1
+    p = ips.find('broadcast ')
+    if p >= 0:
+        udp_sendto = ips[p + 10:]
+        print('udp_sendto =', udp_sendto)
+    del p
 if ambient_interval < 30:
     ambient_interval = 30
+    print('ambient_interval =', ambient_interval)
 if udp_interval <= interval:
     udp_interval = interval + 1
+    print('udp_interval =', udp_interval)
 if len(udp_suffix) > 1:
     udp_suffix = udp_suffix[0]
 if target_rssi > -40:
@@ -230,14 +248,12 @@ if  len(target_devtypes) != i or \
     len(notify_val_hnd) != i :
         print('ERROR: デバイス情報に誤りがあります')
         exit
+del i
 if len(ambient_wkey) != 16:
     print('ERROR: Ambientライトキーの桁数に誤りがあります')
     exit
 
 # MAIN
-if getpass.getuser() != 'root':
-    print('使用方法: sudo', argv[0], '[対象MACアドレス]...')
-    exit()
 scanner = btle.Scanner()
 val = ''
 
@@ -246,11 +262,11 @@ while True:
     try:
         devices = scanner.scan(interval)
     except Exception as e:
-        print("ERROR",e)
-        print("Rebooting HCI, please wait...")
-        subprocess.call(["hciconfig", "hci0", "down"])
+        print('ERROR',e)
+        print('Rebooting HCI, please wait...')
+        subprocess.call(['hciconfig', 'hci0', 'down'])
         sleep(5)
-        subprocess.call(["hciconfig", "hci0", "up"])
+        subprocess.call(['hciconfig', 'hci0', 'up'])
         sleep(interval)
         continue
     sensors = dict()
@@ -263,7 +279,7 @@ while True:
     for dev in devices:
         if dev.rssi < target_rssi:
             continue
-        print("\nDevice %s (%s), RSSI=%d dB, Connectable=%s" % (dev.addr, dev.addrType, dev.rssi, dev.connectable))
+        print('\nDevice %s (%s), RSSI=%d dB, Connectable=%s' % (dev.addr, dev.addrType, dev.rssi, dev.connectable))
         if len(argv) == 1:
             sensors = parser(dev)
         else:
@@ -275,7 +291,7 @@ while True:
             isTargetDev = sensors.get('isTargetDev')
             address = dev.addr
             addrType = dev.addrType
-            # print("    9 Complete Local Name =",isTargetDev)
+            # print('    9 Complete Local Name =',isTargetDev)
             break
     if (target_index is None) or (isTargetDev is None) or (address is None):
         continue  # スキャンへ戻る
@@ -342,7 +358,9 @@ while True:
     # GATT処理部4.Notify待ち受け
     print('Waiting for Notify...')
     hold_amb = None
-    body_dict = {'writeKey':ambient_wkey}
+    body_dict = {'writeKey':ambient_wkey, \
+        'd1':None, 'd2':None, 'd3':None, 'd4':None, \
+        'd5':None, 'd6':None, 'd7':None, 'd8':None  }
     amb_data_en = [0 ,0 ,0 ,0 ,0 ,0 ,0 ,0]          # Ambient送信データの有効/無効
     time_amb = ambient_interval - 7
     time_udp = udp_interval - 7
@@ -415,7 +433,7 @@ while True:
                     save(sensor + '.csv', s)
 
             # UDP送信
-            if time_udp >= udp_interval / interval:
+            if time_udp >= udp_interval:
                 time_udp = 0
                 udp_sender_sensor(sensors)
 

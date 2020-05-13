@@ -126,7 +126,7 @@ def sendToAmbient(ambient_chid, head_dict, body_dict):
         else:
             print('    Done')                           # Doneを表示
     else:
-        print('チャネルID(ambient_chid)が設定されていません')
+        print('    チャネルID(ambient_chid)が設定されていません')
 
 def save(filename, csv):
     try:
@@ -364,7 +364,7 @@ def parser(dev):
 
 # 設定確認
 if getpass.getuser() != 'root':
-    print('使用方法: sudo', argv[0], '[対象MACアドレス]...')
+    print('使用方法: sudo', argv[0], '[対象MACアドレス(省略可)]...')
     exit()
 if udp_sendto == '255.255.255.255':
     # ブロードキャストIPアドレスの取得

@@ -167,7 +167,7 @@ def sendToAmbient(ambient_chid, head_dict, body_dict):
         else:
             print('    Done')                           # Doneを表示
     else:
-        print('チャネルID(ambient_chid)が設定されていません')
+        print('    チャネルID(ambient_chid)が設定されていません')
 
 def save(filename, csv):
     try:
@@ -225,7 +225,7 @@ def parser(dev):
 
 # 設定確認
 if getpass.getuser() != 'root':
-    print('使用方法: sudo', argv[0], '[対象MACアドレス]...')
+    print('使用方法: sudo', argv[0], '[対象MACアドレス(省略可)]...')
     exit()
 if udp_sendto == '255.255.255.255':
     # ブロードキャストIPアドレスの取得
@@ -414,7 +414,6 @@ while True:
                         printval(sensors, 'Pressure', 3, 'hPa')
 
             # センサ個別値のファイルを保存
-            date=datetime.datetime.today()
             if savedata:
                 for sensor in sensors:
                     if (sensor.find(' ') >= 0 or len(sensor) <= 5 or sensor == 'Magnetic') and sensor != 'Color R':

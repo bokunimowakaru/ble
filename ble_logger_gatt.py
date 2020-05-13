@@ -32,7 +32,7 @@ username = 'pi'                     # ファイル保存時の所有者名
 udp_sendto = '255.255.255.255'      # UDP送信宛先
 udp_port   = 1024                   # UDP送信先ポート番号
 udp_suffix = '4'                    # UDP送信デバイス名に付与する番号
-udp_interval = 10                   # UDP/GATT送信間隔
+udp_interval = 10                   # UDP送信間隔
 target_rssi = -60                   # 接続対象デバイスの最低受信強度
 
 # ここに接続するデバイス名とサービスUUIDを入力 ## Nordicは動作未確認
@@ -102,6 +102,11 @@ class MyDelegate(DefaultDelegate):
         return self.val
 
 def udp_sender(udp):
+    if udp is None or len(udp) < 8:
+        return
+    if savedata:
+        if udp[5] == '_' and udp[7] == ',':
+            save(udp[0:7] + '.csv', udp[7:])
     if udp_port <= 0:
         return
     try:
@@ -112,9 +117,9 @@ def udp_sender(udp):
         exit()                                              # プログラムの終了
     if sock:                                                # 作成に成功したとき
         udp = udp.strip('\r\n')                             # 改行を削除してudpへ
-        print('\nUDP Sender =', udp)
+        print('\nUDP/' + udp_sendto + '/' + str(udp_port), '=', udp)
         udp=(udp + '\n').encode()                           # 改行追加とバイト列変換
-        sock.sendto(udp,('255.255.255.255',udp_port))       # UDPブロードキャスト送信
+        sock.sendto(udp,(udp_sendto, udp_port))             # UDPブロードキャスト送信
         sock.close()                                        # ソケットの切断
 
 def udp_sender_sensor(sensors):
@@ -164,14 +169,18 @@ def sendToAmbient(ambient_chid, head_dict, body_dict):
     else:
         print('チャネルID(ambient_chid)が設定されていません')
 
-def save(filename, data):
+def save(filename, csv):
     try:
         fp = open(filename, mode='a')                   # 書込用ファイルを開く
     except Exception as e:                              # 例外処理発生時
-        print('ERROR:',e)                                        # エラー内容を表示
-    fp.write(data + '\n')                               # dataをファイルへ
+        print('ERROR:',e)                               # エラー内容を表示
+    s = datetime.datetime.today().strftime('%Y/%m/%d %H:%M')  # 日時を取得
+    fp.write(s + csv + '\n')                            # sとcsvをファイルへ
     fp.close()                                          # ファイルを閉じる
-    chown(filename, username, username)                 # 所有者をpiユーザへ
+    try:
+        chown(filename, username, username)             # 所有者をpiユーザへ
+    except Exception as e:                              # 例外処理発生時
+        print('ERROR:',e)                               # エラー内容を表示
 
 def printval(dict, name, n, unit):
     value = dict.get(name)
@@ -219,18 +228,24 @@ if getpass.getuser() != 'root':
     print('使用方法: sudo', argv[0], '[対象MACアドレス]...')
     exit()
 if udp_sendto == '255.255.255.255':
+    # ブロードキャストIPアドレスの取得
     p0 = subprocess.Popen(['ifconfig'], stdout=subprocess.PIPE)
     p1 = subprocess.Popen(['grep','broadcast'], stdin=p0.stdout, stdout=subprocess.PIPE)
     p0.stdout.close()
     del p0
-    ips = p1.communicate()[0].decode()
+    p2 = subprocess.Popen(['head','-1'], stdin=p1.stdout, stdout=subprocess.PIPE)
     p1.stdout.close()
     del p1
-    p = ips.find('broadcast ')
-    if p >= 0:
-        udp_sendto = ips[p + 10:]
-        print('udp_sendto =', udp_sendto)
-    del p
+    ips = p2.communicate()[0].decode()
+    p2.stdout.close()
+    del p2
+    p1 = ips.find('broadcast ')
+    p2 = ips.find('\n')
+    if p1 >= 0 and p1 + 10 < p2 + 6:
+        udp_sendto = ips[p1 + 10 : p2]
+        print('udp_sendto =', '"'+udp_sendto+'"')
+    del p1
+    del p2
 if ambient_interval < 30:
     ambient_interval = 30
     print('ambient_interval =', ambient_interval)
@@ -404,7 +419,7 @@ while True:
                 for sensor in sensors:
                     if (sensor.find(' ') >= 0 or len(sensor) <= 5 or sensor == 'Magnetic') and sensor != 'Color R':
                         continue
-                    s = date.strftime('%Y/%m/%d %H:%M')
+                    s = ''
                     # s += ', ' + sensor
                     if sensor == 'isTargetDev' or sensor == 'service' or sensor == 'index' or sensor == 'vals':
                         continue
@@ -430,7 +445,7 @@ while True:
                         s += ', ' + str(round(sensors['Geomagnetic Y'],3))
                         s += ', ' + str(round(sensors['Geomagnetic Z'],3))
                     # print(s, '-> ' + sensor + '.csv') 
-                    save(sensor + '.csv', s)
+                    save(sensor + '_' + address[15:17] + '.csv', s)
 
             # UDP送信
             if time_udp >= udp_interval:
@@ -447,7 +462,7 @@ while True:
             if sensors.get('Button') is not None and len(sensors.get('Button')) >= 4:
                 for i in range(4):
                     if body_dict['d' + str(i+1)] is None:
-                        body_dict['d' + str(i+1)] = sensors['Button'][3-i]
+                        body_dict['d' + str(i+1)] = int(sensors['Button'][3-i])
             body_dict['d5'] = sensors.get('Accelerometer')
             body_dict['d6'] = sensors.get('Geomagnetic')
             body_dict['d7'] = sensors.get('Steps')

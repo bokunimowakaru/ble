@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 # coding: utf-8
 
-# ToDo
-# ★ 複数センサ時のファイル分離対応 MACをファイル名に追加
-# ★ ＧＡＴＴ受信部のスレッド化
-
 ################################################################################
 # BLE Logger SCAN
 #
@@ -453,7 +449,7 @@ while True:
         if sensors.get('Button') is not None and len(sensors.get('Button')) >= 4:
             for i in range(4):
                 if body_dict['d' + str(i+1)] is None:
-                    body_dict['d' + str(i+1)] = sensors['Button'][3-i]
+                    body_dict['d' + str(i+1)] = int(sensors['Button'][3-i])
         body_dict['d5'] = sensors.get('Accelerometer')
         body_dict['d6'] = sensors.get('Geomagnetic')
         body_dict['d7'] = sensors.get('Steps')

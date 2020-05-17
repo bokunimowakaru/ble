@@ -40,29 +40,34 @@ target_devices = [  'cq_ex21_ble_led',\
                     'cq_ex22_ble_sw',\
                     'Nordic_Blinky',\
                     'RBLE-DEV',\
+                    'RBLE-TEMP',\
                     'RBLE-DEV',\
                     'AB Shutter3       ' ]
 target_devtypes = [ 'btn_s',\
                     'btn_s',\
                     'btn_s',\
                     'btn_s',\
+                    'temp.',\
                     'envir',\
                     'btn_s' ]
 target_services = [ '00001523-1212-efde-1523-785feabcd123',\
                     '00001523-1212-efde-1523-785feabcd123',\
                     '00001523-1212-efde-1523-785feabcd123',\
                     '58831926-5f05-4267-ab01-b4968e8efce0',\
+                    '97e780d0-6fca-4d8d-8c95-e02c5dfc7c99',\
                     'b2b70000-0001-4cb2-b34a-6550cc0e998c',\
                     '00001812-0000-1000-8000-00805f9b34fb' ]
 notify_cnf_hnd = [  [0x000e],\
                     [0x000e],\
                     [0x000e],\
                     [0x0013],\
+                    [0x0013],\
                     [0x0013,0x0016,0x0019],\
                     [0x0014] ]
 notify_val_hnd = [  [0x000d],\
                     [0x000d],\
                     [0x000d],\
+                    [0x0012],\
                     [0x0012],\
                     [0x0012,0x0015,0x0018],\
                     [0x0013] ]
@@ -412,6 +417,17 @@ while True:
                     if myDelegate.col == 2:
                         sensors['Pressure'] = val / 1000
                         printval(sensors, 'Pressure', 3, 'hPa')
+                if target_devtypes[target_index] == 'temp.':
+                    # print('    Column=', myDelegate.col)
+                    val = 0
+                    for i in range(len(notified_val)):
+                        val += notified_val[i] << (i * 8)
+                    # print('    Value =', notified_val.hex(),'('+str(val)+')')
+                    if myDelegate.col == 0:
+                        if val >= 32768:
+                            val -= 65536
+                        sensors['Temperature'] = val / 100
+                        printval(sensors, 'Temperature', 2, '℃')
 
             # センサ個別値のファイルを保存
             if savedata:

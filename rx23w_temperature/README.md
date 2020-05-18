@@ -1,9 +1,9 @@
-#### Bluetooth LE Peripheral Demo Firmware for Renesas RX23W Target Board
-# Bluetooth LE 温度センサ rx23w_temperature.mot
+Bluetooth LE Peripheral Demo Firmware for Renesas RX23W Target Board  
+# Bluetooth LE 温度センサ rx23w_temperature.mot  
 
-### ハード改造不要! コンパイル不要! Renesas RX23W Target Board 用
-## Bluetooth LE 温度センサ で Blueotooth を体験しよう
-## by Wataru KUNINO [bokunimo.net](https://bokunimo.net/)
+ハード改造不要! コンパイル不要! Renesas RX23W Target Board 用  
+## Bluetooth LE 温度センサ で Blueotooth を体験しよう  
+by Wataru KUNINO [bokunimo.net](https://bokunimo.net/)  
 
 --------------------------------------------------------------------------------
 

@@ -11,7 +11,7 @@ BME280（Bosch製）を接続し、温度・湿度・気圧値を、Bletooth 送信します。
 利用できます。受信した温度値を UDP/IP でLAN内に転送したり、IoTセンサ用クラウド・
 サービス[Ambient](http://ambidata.io)で蓄積し、グラフ表示することも出来ます。  
 
-![BME280](https://github.com/bokunimowakaru/ble/tree/master/rx23w_tempHumPress/rx23w_tempHumPress.jpg)
+![BME280](rx23w_tempHumPress.jpg)
 
 --------------------------------------------------------------------------------
 

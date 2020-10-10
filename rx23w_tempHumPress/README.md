@@ -11,13 +11,23 @@ BME280（Bosch製）を接続し、温度・湿度・気圧値を、Bletooth 送信します。
 利用できます。受信した温度値を UDP/IP でLAN内に転送したり、IoTセンサ用クラウド・
 サービス[Ambient](http://ambidata.io)で蓄積し、グラフ表示することも出来ます。  
 
+![BME280](https://github.com/bokunimowakaru/ble/tree/master/rx23w_tempHumPress/rx23w_tempHumPress.jpg)
+
 --------------------------------------------------------------------------------
+
+## 環境センサBME280の接続方法
+
+環境センサBME280のSCL端子をRX23Wターゲット・ボードのP16端子へ、SDA端子をP17端子へ、
+3.3Vの電源を3V端子へ、GNDをG端子へ接続してください。  
+BME280のI2Cアドレス設定ピンは、Lレベル（アドレス0x76）に設定してください。  
+I2Cアドレス設定方法は、センサ・モジュールによって異なるので販売店などに、
+お問い合わせください。  
 
 ## 書き込み方法
 
 以下にボードへの書き込み手順を示します。
 
-1.	[rx23w_temperature.mot](https://github.com/bokunimowakaru/ble/tree/master/rx23w_tempHumPress)の保存  
+1.	[rx23w_tempHumPress.mot](https://github.com/bokunimowakaru/ble/tree/master/rx23w_tempHumPress)の保存  
 	PC へダウンロードして下さい。
 
 2.	Renesas Flash Programmer のダウンロード  
@@ -141,7 +151,10 @@ BME280（Bosch製）を接続し、温度・湿度・気圧値を、Bletooth 送信します。
 一切、いたしません。
 
 ## ソースコード  
-配布いたしません。
+下記のレポジトリ（ Adrian Bica 氏）を参照ください。
+
+	RX23WPeripheral
+	https://github.com/adrianbica/BLE_thpsensor_RX23W
 
 ## 権利情報  
 本サンプルは Adrian Bica 氏が配布する RX23WPeripheral (https://github.com/adrianbica/BLE_thpsensor_RX23W)を ルネサス社が配布するソフトウェア統合開発環境Renesas e2 studio ならびに CC-RX Compilerコンパイラ を使用して作成しました。  
@@ -150,8 +163,5 @@ BME280（Bosch製）を接続し、温度・湿度・気圧値を、Bletooth 送信します。
 不具合や損失などが生じた場合であっても、当方は、一切の責任を負いません。  
 
 なお、本ページは Adrian Bica 氏や ルネサス社の作成物ではありません。
-
-	RX23WPeripheral
-	https://github.com/adrianbica/BLE_thpsensor_RX23W
 
 by [bokunimo.net](https://bokunimo.net)

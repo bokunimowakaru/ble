@@ -15,6 +15,8 @@ by Wataru KUNINO [bokunimo.net](https://bokunimo.net/)
 利用できます。受信した温度値を UDP/IP でLAN内に転送したり、IoTセンサ用クラウド・
 サービス[Ambient](http://ambidata.io)で蓄積し、グラフ表示することも出来ます。  
 
+![RX23W](rx23w_temperature.jpg)
+
 --------------------------------------------------------------------------------
 
 ## 書き込み方法

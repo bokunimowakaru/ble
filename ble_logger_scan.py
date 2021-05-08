@@ -319,9 +319,9 @@ def parser(dev):
             sensors['RSSI'] = dev.rssi
 
         if isTargetDev == 'RN4020_TEMP':
-            sensors['ID'] = hex(payval(2,2))
+            sensors['ID'] = hex(payval(val, 2,2))
             sensors['Temperature']\
-                = 27 - (3300 * (payval(4) * 256 + payval(5)) / 65535 - 706) / 1.721
+                = 27 - (3300 * (payval(val, 4) * 256 + payval(val, 5)) / 65535 - 706) / 1.721
             sensors['RSSI'] = dev.rssi
 
         if sensors:

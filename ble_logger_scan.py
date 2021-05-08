@@ -191,7 +191,8 @@ def parser(dev):
             isTargetDev = 'Sensor Kit RH'
         # Spresens用 IoTセンサ
         if adtype == 8 and value[0:8]  == 'LapisDev':
-            isTargetDev = 'Spresense Rohm IoT'
+            # isTargetDev = 'Spresense Rohm IoT'
+            isTargetDev = 'Lapis Dev'
         # Lapis MK715用 IoTセンサ
         if (adtype == 8 or adtype == 9) and (value  == 'nRF5x'):
             isTargetDev = 'Nordic nRF5'
@@ -296,7 +297,7 @@ def parser(dev):
             sensors['Pressure'] = payval(val, 22,3) / 2048
             sensors['RSSI'] = dev.rssi
 
-        if isTargetDev == 'Spresense Rohm IoT':
+        if isTargetDev == 'Spresense Rohm IoT' or isTargetDev == 'Lapis Dev':
             sensors['ID'] = hex(payval(val, 2,2))
             sensors['Temperature'] = -45 + 175 * payval(val, 4,2) / 65536
             sensors['Pressure'] = payval(val, 6,3) / 2048
@@ -524,5 +525,14 @@ Device xx:xx:xx:xx:xx:xx (public), RSSI=-27 dB, Connectable=True
     Accelerometer = 1.016 g ( -0.016 0.0 1.016 g)
     Geomagnetic   = 99.4 uT ( -15 -69 -70 uT)
     RSSI          = -27 dB
+
+Device xx:xx:xx:xx:xx:xx (random), RSSI=-51 dB, Connectable=False
+    isTargetDev   = Nordic nRF5
+    ID            = 0x59
+    SEQ           = 2
+    Button        = 1111
+    Temperature   = 19.07 ℃
+    Humidity      = 76.96 %
+    RSSI          = -51 dB
 
 '''

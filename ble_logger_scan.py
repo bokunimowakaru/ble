@@ -11,6 +11,7 @@
 #   iot_exp_sensorShield_ble_rh
 #   iot_exp_sensorShield_udp_ble
 #   LAPIS MK715用 cq_ex11_ble_sw, cq_ex12_ble_temp, cq_ex13_ble_hum
+#   Rapberry Pi Pico + RN4020 (example03_rn4020.py)
 #
 # cq_ex11_ble_sw, cq_ex12_ble_temp, cq_ex13_ble_hum が送信するビーコンを受信し
 # ビーコンに含まれる、温度センサ値（humは湿度センサ値）を表示します。
@@ -18,7 +19,7 @@
 # iot_exp_press_ble や iot_exp_sensorShield_ble が送信するビーコンを受信し
 # ビーコンに含まれる、温度センサ値と気圧センサ値を表示します。
 #
-#                                          Copyright (c) 2019-2020 Wataru KUNINO
+#                                          Copyright (c) 2019-2021 Wataru KUNINO
 ################################################################################
 
 #【インストール方法】
@@ -194,8 +195,16 @@ def parser(dev):
         # Lapis MK715用 IoTセンサ
         if (adtype == 8 or adtype == 9) and (value  == 'nRF5x'):
             isTargetDev = 'Nordic nRF5'
+        # RN4020
+        if adtype == 9 and value[0:6] == 'RN4020' and dev.addrType == 'public':
+            isTargetDev = value
+            if dev.addr not in rn4020mac:
+                rn4020mac.append(dev.addr)
+                rn4020dev[dev.addr] = value
         if desc == 'Manufacturer':
             val = value
+            if dev.addr in rn4020mac and dev.addrType == 'public' and val[0:4] == 'cd00':
+                isTargetDev = rn4020dev[dev.addr]
         if isTargetDev == '' or val == '':
             continue
         print('\nDevice %s (%s), RSSI=%d dB, Connectable=%s' % (dev.addr, dev.addrType, dev.rssi, dev.connectable))
@@ -309,6 +318,12 @@ def parser(dev):
             sensors['SEQ'] = payval(val, 9)
             sensors['RSSI'] = dev.rssi
 
+        if isTargetDev == 'RN4020_TEMP':
+            sensors['ID'] = hex(payval(2,2))
+            sensors['Temperature']\
+                = 27 - (3300 * (payval(4) * 256 + payval(5)) / 65535 - 706) / 1.721
+            sensors['RSSI'] = dev.rssi
+
         if sensors:
             printval(sensors, 'ID', 0, '')
             printval(sensors, 'SEQ', 0, '')
@@ -404,6 +419,9 @@ if ambient_interval < 30:
 body_dict = {'writeKey':ambient_wkey, \
     'd1':None, 'd2':None, 'd3':None, 'd4':None, \
     'd5':None, 'd6':None, 'd7':None, 'd8':None  }
+
+rn4020mac = list()
+rn4020dev = dict()
 
 while True:
     # BLE受信処理

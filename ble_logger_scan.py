@@ -38,14 +38,17 @@
 
 ambient_chid='00000'                # ここにAmbientで取得したチャネルIDを入力
 ambient_wkey='0123456789abcdef'     # ここにはライトキーを入力
-ambient_interval = 30               # Ambientへの送信間隔
+ambient_interval = 0               # Ambientへの送信間隔 (0で送信なし)
+
 interval = 1.01                     # Blutooth LE 受信動作間隔
+showAdData = True                   # ビーコン情報表示の要否
+target_rssi = -999                  # 最低受信強度
 savedata = True                     # ファイル保存の要否
 username = 'pi'                     # ファイル保存時の所有者名
 udp_sendto = '255.255.255.255'      # UDP送信宛先
 udp_port   = 1024                   # UDP送信先ポート番号
 udp_suffix = '4'                    # UDP送信デバイス名に付与する番号
-udp_interval = 10                   # UDP送信間隔
+udp_interval = 0                   # UDP送信間隔 (0で送信なし)
 
 from bluepy import btle
 from sys import argv
@@ -208,7 +211,21 @@ def parser(dev):
                 isTargetDev = rn4020dev[dev.addr]
         if isTargetDev == '' or val == '':
             continue
-        print('\nDevice %s (%s), RSSI=%d dB, Connectable=%s' % (dev.addr, dev.addrType, dev.rssi, dev.connectable))
+
+        if showAdData:
+            print('\nDevice',dev.addr, end='')          # MACアドレスを表示
+            print(' (' + dev.addrType + ')', end='')    # アドレス種別を表示
+            print(', RSSI=' + str(dev.rssi), end='')    # 受信強度RSSIを表示
+            if dev.connectable:                         # GATT接続が可能なデバイス
+                print(', Connectable', end='')          # 接続可能を表示
+            print('\n+----+--------------------------+----------------------------')
+            print('|type|              description | value')
+            print('+----+--------------------------+----------------------------')
+            for d in dev.getScanData():                 # タプル型変数dに代入
+                print('|%4d|%25s' %(d[0],d[1]), end='') # アドバタイズTypeとType名
+                print('\t|', d[2])                      # データ値を表示
+            print('+----+--------------------------+----------------------------\n')
+
         sensors = dict()
         print('    isTargetDev   =',isTargetDev)
 
@@ -401,10 +418,10 @@ if udp_sendto == '255.255.255.255':
         print('udp_sendto =', '"'+udp_sendto+'"')
     del p1
     del p2
-if ambient_interval < 30:
+if ambient_interval > 0 and ambient_interval < 30:
     ambient_interval = 30
     print('ambient_interval =', ambient_interval)
-if udp_interval <= interval:
+if udp_interval > 0 and udp_interval <= interval:
     udp_interval = interval + 1
     print('udp_interval =', udp_interval)
 if len(ambient_wkey) != 16:
@@ -415,8 +432,6 @@ if len(ambient_wkey) != 16:
 scanner = btle.Scanner()
 time_amb = ambient_interval - 5
 time_udp = udp_interval - 5
-if ambient_interval < 30:
-    ambient_interval = 30
 body_dict = {'writeKey':ambient_wkey, \
     'd1':None, 'd2':None, 'd3':None, 'd4':None, \
     'd5':None, 'd6':None, 'd7':None, 'd8':None  }
@@ -442,7 +457,9 @@ while True:
 
     # 受信データについてBLEデバイス毎の処理
     for dev in devices:
-        #print('\nDevice %s (%s), RSSI=%d dB, Connectable=%s' % (dev.addr, dev.addrType, dev.rssi, dev.connectable))
+        if dev.rssi < target_rssi:                  # 受信強度が-80より小さい時
+            continue                                # forループの先頭に戻る
+
         if len(argv) == 1:
             sensors = parser(dev)
         else:
@@ -454,7 +471,7 @@ while True:
             continue
 
         # UDP送信
-        if time_udp >= udp_interval:
+        if udp_interval > 0 and time_udp >= udp_interval:
             time_udp = 0
             udp_sender_sensor(sensors)
 
@@ -483,7 +500,7 @@ while True:
         # print('body_dict',body_dict)
 
         # クラウドへの送信処理
-        if time_amb >= ambient_interval:
+        if ambient_interval > 0 and time_amb >= ambient_interval:
             time_amb = 0
             sendToAmbient(ambient_chid, head_dict, body_dict)
 

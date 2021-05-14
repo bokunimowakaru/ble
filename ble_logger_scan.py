@@ -38,7 +38,7 @@
 
 ambient_chid='00000'                # ここにAmbientで取得したチャネルIDを入力
 ambient_wkey='0123456789abcdef'     # ここにはライトキーを入力
-ambient_interval = 0               # Ambientへの送信間隔 (0で送信なし)
+ambient_interval = 30               # Ambientへの送信間隔 (0で送信なし)
 
 interval = 1.01                     # Blutooth LE 受信動作間隔
 showAdData = True                   # ビーコン情報表示の要否
@@ -48,7 +48,7 @@ username = 'pi'                     # ファイル保存時の所有者名
 udp_sendto = '255.255.255.255'      # UDP送信宛先
 udp_port   = 1024                   # UDP送信先ポート番号
 udp_suffix = '4'                    # UDP送信デバイス名に付与する番号
-udp_interval = 0                   # UDP送信間隔 (0で送信なし)
+udp_interval = 10                   # UDP送信間隔 (0で送信なし)
 
 from bluepy import btle
 from sys import argv
@@ -224,7 +224,7 @@ def parser(dev):
             for d in dev.getScanData():                 # タプル型変数dに代入
                 print('|%4d|%25s' %(d[0],d[1]), end='') # アドバタイズTypeとType名
                 print('\t|', d[2])                      # データ値を表示
-            print('+----+--------------------------+----------------------------\n')
+            print('+----+--------------------------+----------------------------')
 
         sensors = dict()
         print('    isTargetDev   =',isTargetDev)
@@ -512,10 +512,14 @@ pi@raspberrypi:~ $ git clone http://github.com/bokunimowakaru/ble
 pi@raspberrypi:~ $ cd ~/ble
 pi@raspberrypi:~/ble $ sudo ./ble_logger_scan.py
 
-Device xx:xx:xx:xx:xx:xx (public), RSSI=-69 dB, Connectable=True
-    1 Flags = 06
-    9 Complete Local Name = R
-  255 Manufacturer = 01004c6cf10093009aff59ff0a0fc40080fee0fcdf521f
+Device xx:xx:xx:xx:xx:xx (public), RSSI=-69 dB, Connectable
++----+--------------------------+----------------------------
+|type|              description | value
++----+--------------------------+----------------------------
+|   1|                    Flags | 06
+|   9|      Complete Local Name | R
+| 255|             Manufacturer | 01004c6cf10093009aff59ff0a0fc40080fee0fcdf521f
++----+--------------------------+----------------------------
     isTargetDev   = Sensor Kit RH
     ID            = 0x1
     SEQ           = 147
@@ -526,10 +530,14 @@ Device xx:xx:xx:xx:xx:xx (public), RSSI=-69 dB, Connectable=True
     Geomagnetic   = 90.9 uT ( 19.6 -38.4 -80.0 uT)
     RSSI          = -69 dB
 
-Device xx:xx:xx:xx:xx:xx (public), RSSI=-27 dB, Connectable=True
-    1 Flags = 06
-    9 Complete Local Name = espRohm
-  255 Manufacturer = 0100b1e4c90000308147ff0041f1bbbada
+Device xx:xx:xx:xx:xx:xx (public), RSSI=-27 dB, Connectable
++----+--------------------------+----------------------------
+|type|              description | value
++----+--------------------------+----------------------------
+|   1|                    Flags | 06
+|   9|      Complete Local Name | espRohm
+| 255|             Manufacturer | 0100b1e4c90000308147ff0041f1bbbada
++----+--------------------------+----------------------------
     isTargetDev   = Sensor Kit espRohm
     ID            = 0x1
     SEQ           = 218
@@ -543,13 +551,19 @@ Device xx:xx:xx:xx:xx:xx (public), RSSI=-27 dB, Connectable=True
     Geomagnetic   = 99.4 uT ( -15 -69 -70 uT)
     RSSI          = -27 dB
 
-Device xx:xx:xx:xx:xx:xx (random), RSSI=-51 dB, Connectable=False
+Device xx:xx:xx:xx:xx:xx (random), RSSI=-77
++----+--------------------------+----------------------------
+|type|              description | value
++----+--------------------------+----------------------------
+|   1|                    Flags	| 06
+| 255|             Manufacturer	| 5900606200000055
+|   9|      Complete Local Name	| nRF5x
++----+--------------------------+----------------------------
     isTargetDev   = Nordic nRF5
-    ID            = 0x59
-    SEQ           = 2
-    Button        = 1111
-    Temperature   = 19.07 ℃
-    Humidity      = 76.96 %
-    RSSI          = -51 dB
-
+    ID            = 0x59 
+    SEQ           = 85 
+    Button        = 0000 
+    Temperature   = 22.25 ℃
+    Humidity      = 0.0 %
+    RSSI          = -77 dB
 '''

@@ -205,6 +205,7 @@ def parser(dev):
             if dev.addr not in rn4020mac:
                 rn4020mac.append(dev.addr)
                 rn4020dev[dev.addr] = value
+                print('\nfound RN4020 No.',len(rn4020dev))
         if desc == 'Manufacturer':
             val = value
             if dev.addr in rn4020mac and dev.addrType == 'public' and val[0:4] == 'cd00':
@@ -566,4 +567,18 @@ Device xx:xx:xx:xx:xx:xx (random), RSSI=-77
     Temperature   = 22.25 ℃
     Humidity      = 0.0 %
     RSSI          = -77 dB
+
+found RN4020 No. 1
+
+Device 00:1e:c0:xx:xx:xx (public), RSSI=-55
++----+--------------------------+----------------------------
+|type|              description | value
++----+--------------------------+----------------------------
+|   1|                    Flags	| 04
+| 255|             Manufacturer	| cd0037a3
++----+--------------------------+----------------------------
+    isTargetDev   = RN4020_TEMP
+    ID            = 0xcd 
+    Temperature   = 20.49 ℃
+    RSSI          = -55 dB
 '''

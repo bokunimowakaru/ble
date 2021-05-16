@@ -343,6 +343,12 @@ def parser(dev):
                 = 27 - (3300 * (payval(val, 4) * 256 + payval(val, 5)) / 65535 - 706) / 1.721
             sensors['RSSI'] = dev.rssi
 
+        if isTargetDev == 'RN4020_HUMID':
+            sensors['ID'] = hex(payval(val, 2,2))
+            sensors['Temperature'] = payval(val, 4,2) / 65535. * 175. - 45.
+            sensors['Humidity'] = payval(val, 6,2) / 65535. * 100.
+            sensors['RSSI'] = dev.rssi
+
         if sensors:
             printval(sensors, 'ID', 0, '')
             printval(sensors, 'SEQ', 0, '')
@@ -581,4 +587,19 @@ Device 00:1e:c0:xx:xx:xx (public), RSSI=-55
     ID            = 0xcd 
     Temperature   = 20.49 ℃
     RSSI          = -55 dB
+
+found RN4020 No. 2
+
+Device 00:1e:c0:xx:xx:xx (public), RSSI=-64 dB
++----+--------------------------+----------------------------
+|type|              description | value
++----+--------------------------+----------------------------
+|   1|                    Flags	| 04
+| 255|             Manufacturer	| cd00826a0da5
++----+--------------------------+----------------------------
+    isTargetDev   = RN4020_HUMID
+    ID            = 0xcd 
+    Temperature   = 27.81 ℃
+    Humidity      = 64.47 %
+    RSSI          = -63 dB
 '''

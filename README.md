@@ -1,23 +1,23 @@
 # ble
-Bluetooth LE Central Examples for IoT Server Raspberry Pi  
+Bluetooth LE Beacon (advertising) Transmitter and Receiver Examples for IoT Application  
 
-1.	RX23W—p Bluetooth LE ‰·“xƒZƒ“ƒT rx23w_temperature.mot  
+1.	RX23Wç”¨ Bluetooth LE æ¸©åº¦ã‚»ãƒ³ã‚µ rx23w_temperature.mot  
 	https://github.com/bokunimowakaru/ble/tree/master/rx23w_temperature
 
 ![RX23W](rx23w_temperature/rx23w_temperature.jpg)
 
-2.	RX23W—p Bluetooth LE ‰·“xE¼“xE‹Cˆ³ƒZƒ“ƒT rx23w_tempHumPress.mot  
+2.	RX23Wç”¨ Bluetooth LE æ¸©åº¦ãƒ»æ¹¿åº¦ãƒ»æ°—åœ§ã‚»ãƒ³ã‚µ rx23w_tempHumPress.mot  
 	https://github.com/bokunimowakaru/ble/tree/master/rx23w_tempHumPress
 
 ![BME280](rx23w_tempHumPress/rx23w_tempHumPress.jpg)
 
-3.	Raspberry Pi —p ble_logger_scan.py  
-	ƒr[ƒRƒ“‚ğóM‚µA•\¦‚µ‚Ü‚·B
+3.	Raspberry Pi ç”¨ ble_logger_scan.py  
+	ãƒ“ãƒ¼ã‚³ãƒ³ã‚’å—ä¿¡ã—ã€è¡¨ç¤ºã—ã¾ã™ã€‚
 
-4.	Raspberry Pi —p ble_logger_gatt.py  
-	ƒZƒ“ƒTî•ñ‚ğGATT‚ÅóM‚µA•\¦‚µ‚Ü‚·B
+4.	Raspberry Pi ç”¨ ble_logger_gatt.py  
+	ã‚»ãƒ³ã‚µæƒ…å ±ã‚’GATTã§å—ä¿¡ã—ã€è¡¨ç¤ºã—ã¾ã™ã€‚
 
-## Œ —˜î•ñ  
-ŠeƒtƒHƒ‹ƒ_“à‚Ì README.md, LICENSE, ƒ\[ƒXƒR[ƒh ‚È‚Ç‚ğŠm”F‚µ‚Ä‚­‚¾‚³‚¢B
+## æ¨©åˆ©æƒ…å ±  
+å„ãƒ•ã‚©ãƒ«ãƒ€å†…ã® README.md, LICENSE, ã‚½ãƒ¼ã‚¹ã‚³ãƒ¼ãƒ‰ ãªã©ã‚’ç¢ºèªã—ã¦ãã ã•ã„ã€‚
 
 by [bokunimo.net](https://bokunimo.net)

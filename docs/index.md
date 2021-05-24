@@ -1,5 +1,5 @@
 # ble
-Bluetooth LE Central Examples for IoT Server Raspberry Pi  
+Bluetooth Beacon (advertising) Transmitter and Receiver Examples for IoT Application
 
 1.	RX23W用 Bluetooth LE 温度センサ rx23w_temperature.mot  
 	https://github.com/bokunimowakaru/ble/tree/master/rx23w_temperature

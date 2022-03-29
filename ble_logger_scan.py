@@ -492,13 +492,17 @@ while True:
 
         # クラウドへの送信データ生成
         body_dict['d1'] = sensors.get('Temperature')
+        '''
         if not body_dict['d1']:
             body_dict['d1'] = sensors.get('Number')
+        '''
         body_dict['d2'] = sensors.get('Humidity')
         if not body_dict['d2']:
             body_dict['d2'] = sensors.get('Proximity')
+            '''
             if not body_dict['d2']:
                 body_dict['d2'] = sensors.get('Count')
+            '''
         body_dict['d3'] = sensors.get('Pressure')
         body_dict['d4'] = sensors.get('Illuminance')
         if sensors.get('Button') is not None and len(sensors.get('Button')) >= 4:
